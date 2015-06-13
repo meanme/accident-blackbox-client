@@ -6,10 +6,15 @@ angular
         'ngResource',
         'ngSanitize',
         'ngRoute',
+        'ngSocket',
         'angular-here-maps'
     ])
     .config(['$routeProvider', 'MapConfigProvider',
-        function ($routeProvider, MapConfigProvider) {
+        '$socketProvider',
+        function ($routeProvider, MapConfigProvider,
+                  $socketProvider) {
+
+            $socketProvider.setUrl("http://localhost:3000");
 
             Highcharts.setOptions({
                 global : {

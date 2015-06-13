@@ -3,7 +3,22 @@
 angular.module('blackboxApp')
   .controller('MainCtrl', [
         '$scope', '$http', '$window', '$timeout', 'polling',
-        function ($scope, $http, $window, $timeout, polling) {
+        '$socket',
+        function ($scope, $http, $window, $timeout, polling, $socket) {
+
+//            $socket.on('vehicle-data', function(data) {
+//            });
+
+            $scope.safeApply = function(fn) {
+                var phase = this.$root.$$phase;
+                if(phase == '$apply' || phase == '$digest') {
+                    if(fn && (typeof(fn) === 'function')) {
+                        fn();
+                    }
+                } else {
+                    this.$apply(fn);
+                }
+            };
 
             $scope.speed = [];
             $scope.startPolling = false;
@@ -32,10 +47,10 @@ angular.module('blackboxApp')
                     }
                 }
             };
-
+//
             Highcharts.setOptions({
-                global: {
-                    useUTC: false
+                global : {
+                    useUTC : false
                 }
             });
 
@@ -53,11 +68,32 @@ angular.module('blackboxApp')
 
                             // set up the updating of the chart each second
                             var series = this.series[0];
-                            setInterval(function () {
-                                var x = (new Date()).getTime(), // current time
-                                    y = Math.random();
-                                series.addPoint([x, y], true, true);
-                            }, 1000);
+
+                            // Register sockets
+//                            setInterval(function () {
+//                                var x = (new Date()).getTime(), // current time
+//                                    y = Math.random();
+//                                series.addPoint([x, y], true, true);
+//                            }, 1000);
+
+                            $socket.on('vehicle-data', function(data) {
+                                if(data.Vehicle_Speed == 0) {return;}
+
+                                series.addPoint([
+                                    Math.floor(data.Timestamp / 1000) * 1000,
+                                    data.Vehicle_Speed
+                                ], true, true);
+
+
+                                    $scope.map.center.lng = data.GPS_Longitude;
+                                    $scope.map.center.lat = data.GPS_Latitude;
+
+                                    $scope.marker.coordinates.lng = data.GPS_Longitude;
+                                    $scope.marker.coordinates.lat = data.GPS_Latitude;
+
+                                $scope.safeApply();
+
+                            })
                         }
                     }
                 },
@@ -65,10 +101,11 @@ angular.module('blackboxApp')
                     text: ''
                 },
                 xAxis: {
-                    type: 'datetime',
-                    tickPixelInterval: 150
+                    type: 'datetime'
                 },
                 yAxis: {
+                    min: 0,
+                    max: 200,
                     title: {
                         enabled: false
                     },
@@ -91,17 +128,18 @@ angular.module('blackboxApp')
                     enabled: false
                 },
                 series: [{
-                    name: 'Random data',
+                    name: '',
+                    //data: null
                     data: (function () {
                         // generate an array of random data
                         var data = [],
                             time = (new Date()).getTime(),
                             i;
 
-                        for (i = -19; i <= 0; i += 1) {
+                        for (i = 0; i <= 5; i ++) {
                             data.push({
                                 x: time + i * 1000,
-                                y: Math.random()
+                                y: Math.random() * 120
                             });
                         }
                         return data;
@@ -112,7 +150,6 @@ angular.module('blackboxApp')
             $scope.responses = [];
 
             $scope.pollCoordinates = function(response) {
-//                console.log(response.Vehicle_Speed);
 
                 $scope.map.center.lng = response.GPS_Longitude;
                 $scope.map.center.lat = response.GPS_Latitude;
@@ -140,29 +177,18 @@ angular.module('blackboxApp')
                 success(function(data, status, headers, config) {
 
                     $scope.dataLoaded = true;
-                    console.log('data loaded');
+
+                    $socket.emit('data-loaded');
 
                     // this callback will be called asynchronously
                     // when the response is available
                     $scope.responses = data;
 
-                    $scope.map.center.lng = $scope.responses[0].GPS_Longitude;
-                    $scope.map.center.lat = $scope.responses[0].GPS_Latitude;
-
-                    $scope.marker.coordinates.lng = $scope.responses[0].GPS_Longitude;
-                    $scope.marker.coordinates.lat = $scope.responses[0].GPS_Latitude;
-
-//                    polling.startPolling('vehicle', 'http://172.31.99.2/vehicle', 1000, $scope.pollCoordinates);
-
-//                    angular.forEach($scope.responses, function(response) {
+//                    $scope.map.center.lng = $scope.responses[0].GPS_Longitude;
+//                    $scope.map.center.lat = $scope.responses[0].GPS_Latitude;
 //
-//                        $scope.speed.push([
-//                            Math.floor(new Date(response.Timestamp) * 1000 ),
-//                            response.Vehicle_Speed
-//                        ]);
-//                    });
-
-                    //$scope.updateTicker();
+//                    $scope.marker.coordinates.lng = $scope.responses[0].GPS_Longitude;
+//                    $scope.marker.coordinates.lat = $scope.responses[0].GPS_Latitude;
 
                     // Remove street view
                     $timeout(function() {
@@ -172,12 +198,6 @@ angular.module('blackboxApp')
                            }
                         });
                     });
-
-//                    $scope.chartConfig.series[0].showInLegend = false;
-//                    $scope.chartConfig.series[0].name = 'Vehicle_Speed';
-////                    $scope.chartConfig.series[0].data = $scope.speed;
-//                    $scope.chartConfig.series[0].data = [];
-
                 }).
                 error(function(data, status, headers, config) {
                     // called asynchronously if an error occurs
