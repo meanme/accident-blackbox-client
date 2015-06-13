@@ -1,0 +1,10 @@
+<div class="row" ng-if="!chartConfig.loading">
+
+	<map zoom="map.zoom" center="map.center">
+		<marker coordinates="marker.coordinates" icon="marker.icon"></marker>
+	</map>
+
+</div>
+<div class="row ">
+	<highchart id="chart1" config="chartConfig" class="span10"></highchart>
+</div>
