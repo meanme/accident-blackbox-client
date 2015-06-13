@@ -7,5 +7,35 @@ $icon-font-path: "/bower_components/bootstrap-sass-official/vendor/assets/fonts/
 // endbower
 
 .here-map {
+  position: absolute;
+  height: 100%;
+  width: 100%;
+}
+
+.marker-icon {
+  height: 64px;
+  width: 64px;
+}
+
+
+#container {
+
+  min-width: 400px;
   height: 300px;
+
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  z-index: 10;
+  background-color: rgba(255, 255, 255, 0.6);
+}
+
+#vehicle-speed {
+  position: absolute;
+  top: 0;
+  right: 0;
+
+  width: 400px;
+  height: 300px;
+  background-color: rgba(255, 255, 255, 0.6);
 }

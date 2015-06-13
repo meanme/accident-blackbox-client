@@ -7,6 +7,13 @@ angular.module('blackboxApp')
         var polls = {};
 
         return {
+            /**
+             * Start polling from the server
+             * @param name
+             * @param url
+             * @param pollingTime
+             * @param callback
+             */
             startPolling: function(name, url, pollingTime, callback) {
 
                 // Check to make sure poller doesn't already exist

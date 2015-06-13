@@ -6,11 +6,16 @@ angular
         'ngResource',
         'ngSanitize',
         'ngRoute',
-        'highcharts-ng',
         'angular-here-maps'
     ])
     .config(['$routeProvider', 'MapConfigProvider',
         function ($routeProvider, MapConfigProvider) {
+
+            Highcharts.setOptions({
+                global : {
+                    useUTC : false
+                }
+            });
 
         MapConfigProvider.setOptions({
             appId: 'evalLunne37Ciwejfare7',
