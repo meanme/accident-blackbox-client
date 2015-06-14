@@ -152,7 +152,7 @@ angular.module('blackboxApp')
                         for (i = 0; i <= 5; i ++) {
                             data.push({
                                 x: time + i * 1000,
-                                y: Math.random() * 120
+                                y: Math.random() * 20 + 120
                             });
                         }
                         return data;
