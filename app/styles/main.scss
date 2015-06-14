@@ -18,6 +18,20 @@ $icon-font-path: "/bower_components/bootstrap-sass-official/vendor/assets/fonts/
   margin-top: -20px;
 }
 
+.logo-marker {
+
+  img {
+    display: none;
+    transform: translate(-50%, -50%);
+    top: calc(50% - 31px);
+    left: calc(50% + 31px);
+    z-index: 15;
+    height: 42px;
+    position: absolute;
+    width: 42px;
+  }
+}
+
 
 #container {
 

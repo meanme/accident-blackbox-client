@@ -9,6 +9,9 @@ angular.module('blackboxApp')
 //            $socket.on('vehicle-data', function(data) {
 //            });
 
+            var bearsMarker = null;
+
+            $scope.map = null;
             $scope.safeApply = function(fn) {
                 var phase = this.$root.$$phase;
                 if(phase == '$apply' || phase == '$digest') {
@@ -26,7 +29,7 @@ angular.module('blackboxApp')
 
             $scope.dataLoaded = false;
 
-            $scope.map = {
+            /*$scope.map = {
                 zoom : 14,
                 center : {
                     lng: 0,
@@ -46,7 +49,7 @@ angular.module('blackboxApp')
                         }
                     }
                 }
-            };
+            };*/
 //
             Highcharts.setOptions({
                 global : {
@@ -77,7 +80,7 @@ angular.module('blackboxApp')
 //                            }, 1000);
 
                             $socket.on('vehicle-data', function(data) {
-                                if(data.Vehicle_Speed == 0) {return;}
+//                                if(data.Vehicle_Speed == 0) {return;}
 
                                 series.addPoint([
                                     Math.floor(data.Timestamp / 1000) * 1000,
@@ -85,11 +88,21 @@ angular.module('blackboxApp')
                                 ], true, true);
 
 
-                                    $scope.map.center.lng = data.GPS_Longitude;
-                                    $scope.map.center.lat = data.GPS_Latitude;
+                                $scope.map.setCenter({
+                                    lat: data.GPS_Latitude,
+                                    lng: data.GPS_Longitude
+                                });
 
-                                    $scope.marker.coordinates.lng = data.GPS_Longitude;
-                                    $scope.marker.coordinates.lat = data.GPS_Latitude;
+                                bearsMarker.setPosition({
+                                    lat: data.GPS_Latitude,
+                                    lng: data.GPS_Longitude
+                                });
+
+//                                    $scope.map.center.lng = data.GPS_Longitude;
+//                                    $scope.map.center.lat = data.GPS_Latitude;
+//
+//                                    $scope.marker.coordinates.lng = data.GPS_Longitude;
+//                                    $scope.marker.coordinates.lat = data.GPS_Latitude;
 
                                 $scope.safeApply();
 
@@ -149,34 +162,11 @@ angular.module('blackboxApp')
 
             $scope.responses = [];
 
-            $scope.pollCoordinates = function(response) {
-
-                $scope.map.center.lng = response.GPS_Longitude;
-                $scope.map.center.lat = response.GPS_Latitude;
-
-                $scope.marker.coordinates.lng = response.GPS_Longitude;
-                $scope.marker.coordinates.lat = response.GPS_Latitude;
-
-                $scope.chartConfig.series[0].data.push(
-                    Math.floor(new Date(response.Timestamp) ),
-                    response.Vehicle_Speed
-                );
-            };
-
-            $scope.tickerIndex = 0;
-            $scope.updateTicker = function() {
-                if($scope.tickerIndex < $scope.responses.length) {
-                    // Process the next ticker
-                    $scope.pollCoordinates($scope.responses[$scope.tickerIndex++]);
-
-                    $timeout($scope.updateTicker, 1000);
-                }
-            };
-
             $http.get('json/export1.json').
                 success(function(data, status, headers, config) {
 
                     $scope.dataLoaded = true;
+                    initializeMap();
 
                     $socket.emit('data-loaded');
 
@@ -184,6 +174,7 @@ angular.module('blackboxApp')
                     // when the response is available
                     $scope.responses = data;
 
+//                    console.log($scope.map);
 //                    $scope.map.center.lng = $scope.responses[0].GPS_Longitude;
 //                    $scope.map.center.lat = $scope.responses[0].GPS_Latitude;
 //
@@ -203,5 +194,98 @@ angular.module('blackboxApp')
                     // called asynchronously if an error occurs
                     // or server returns response with an error status.
                     console.error(data);
+                }
+            );
+
+            function initializeMap() {
+                $timeout(function() {
+
+                    var platform = new H.service.Platform({
+                        app_id: 'evalLunne37Ciwejfare7',
+                        app_code: 'RrEcE54Hc6U2VGp70LqoQQ',
+                        useCIT: true,
+                        useHTTPS: true
+                    });
+                    var defaultLayers = platform.createDefaultLayers();
+
+                    $scope.map = new H.Map(document.getElementById('map'),
+                        defaultLayers.normal.map);
+
+                    $scope.map.setZoom(13);
+
+                    var behavior = new H.mapevents.Behavior(new H.mapevents.MapEvents($scope.map));
+
+                    // Create the default UI components
+                    var ui = H.ui.UI.createDefault($scope.map, defaultLayers);
+
+                    addDomMarker($scope.map);
+
+                }); // End of timeout
+            }
+
+            function addDomMarker(map) {
+
+                var outerElement = document.createElement('div'),
+                    innerElement = document.createElement('div');
+
+                outerElement.style.userSelect = 'none';
+                outerElement.style.webkitUserSelect = 'none';
+                outerElement.style.msUserSelect = 'none';
+                outerElement.style.mozUserSelect = 'none';
+                outerElement.style.cursor = 'default';
+
+                innerElement.style.color = 'red';
+                innerElement.style.borderRadius = '50%';
+                innerElement.style.backgroundColor = 'blue';
+                innerElement.style.border = '2px solid black';
+                innerElement.style.font = 'normal 12px arial';
+                innerElement.style.lineHeight = '12px';
+
+                innerElement.style.paddingTop = '2px';
+                innerElement.style.paddingLeft = '4px';
+                innerElement.style.width = '20px';
+                innerElement.style.height = '20px';
+
+                // add negative margin to inner element
+                // to move the anchor to center of the div
+                innerElement.style.marginTop = '-10px';
+                innerElement.style.marginLeft = '-10px';
+
+                outerElement.appendChild(innerElement);
+
+                // Add text to the DOM element
+                innerElement.innerHTML = '';
+
+                function changeOpacity(evt) {
+                    evt.target.style.opacity = 0.6;
+                }
+
+                function changeOpacityToOne(evt) {
+                    evt.target.style.opacity = 1;
+                }
+
+                //create dom icon and add/remove opacity listeners
+                var domIcon = new H.map.DomIcon(outerElement, {
+                    // the function is called every time marker enters the viewport
+                    onAttach: function(clonedElement, domIcon, domMarker) {
+                        clonedElement.addEventListener('mouseover', changeOpacity);
+                        clonedElement.addEventListener('mouseout', changeOpacityToOne);
+                    },
+                    // the function is called every time marker leaves the viewport
+                    onDetach: function(clonedElement, domIcon, domMarker) {
+                        clonedElement.removeEventListener('mouseover', changeOpacity);
+                        clonedElement.removeEventListener('mouseout', changeOpacityToOne);
+                    }
                 });
-  }]);
+
+                // Marker for Chicago Bears home
+                bearsMarker = new H.map.DomMarker({lat: 41.8625, lng: -87.6166}, {
+                    icon: domIcon
+                });
+                map.addObject(bearsMarker);
+
+            }
+
+        }
+    ]
+);
