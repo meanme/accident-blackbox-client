@@ -7,12 +7,16 @@ angular.module('blackboxApp')
         function ($scope, $http, $window, $timeout, polling, $socket) {
 
             var carMarker = null;
+            var velocities = [];
+            var drop = 150;         // Detect a deceleration of at least 150 over 250 ms
+            var crashed = false;
 
             var video = document.getElementById('dash-cam');
             var videoTime = 0;
             $scope.map = null;
             var startTime = null;
             $scope.changeFrame = function() {
+
                 startTime = (new Date()).getTime();
                 $socket.emit('change-frame', {
                     frame: $scope.frame
@@ -43,54 +47,35 @@ angular.module('blackboxApp')
                 }
             });
 
-            var velocityDelta = [0, 0, 0, 0];
+            $scope.exportSVG = function(data) {
 
-//            $scope.sequenceId = null;
-//            $scope.pollCallback = function() {
-//
-//                var params = ($scope.sequenceId != null) ? {seq: $scope.sequenceId} : null;
-//
-//                $http({
-//                    url: 'http://localhost:3000/vehicle',
-//                    method: "GET",
-//                    params: params
-//                }).success(function(data) {
-//                    console.log(data.Timestmap);
-//                    var series = chartContext.series[0];
-//
-//                    $scope.sequenceId = data.Extra_SequenceNumber;
-//
-//                    series.addPoint([
-////                            Math.floor(data.Timestamp / 1000) * 1000,
-//
-//
-//                        startTime + data.Extra_NormalizedTimeStamp,
-//                        data.Vehicle_Speed
-//                    ], true, true);
-//
-//
-//                    $scope.map.setCenter({
-//                        lat: data.GPS_Latitude,
-//                        lng: data.GPS_Longitude
-//                    });
-//
-//                    carMarker.setPosition({
-//                        lat: data.GPS_Latitude,
-//                        lng: data.GPS_Longitude
-//                    });
-//
-//                    $scope.pollCallback();
-//
-//                }, function(err) {
-//                    console.error(err);
-//                })
-//            };
+                console.log(data);
+
+                var svg = $('#container').find('svg')[0];
+                var svgSize = svg.getBoundingClientRect();
+
+                var svgData = new XMLSerializer().serializeToString( svg );
+                var canvas = document.createElement('canvas');
+
+                canvas.width = svgSize.width;
+                canvas.height = svgSize.height;
+                var ctx = canvas.getContext('2d');
+
+                var img = document.createElement('img');
+                img.setAttribute('src', 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svgData))));
+                img.onload = function() {
+                    ctx.drawImage(img, 0, 0);
+                    console.log(canvas.toDataURL('image/png'));
+
+                    console.log(
+                        'http://image.maps.cit.api.here.com/mia/1.6/mapview' +
+                            '?app_id=evalLunne37Ciwejfare7' +
+                            '&app_code=RrEcE54Hc6U2VGp70LqoQQ' +
+                            '&z=11&c=' + data.GPS_Latitude + ',' + data.GPS_Longitude
+                    );
 
 
-            $scope.exportSVG = function() {
-                return chart.getSVG()
-                    .replace(/</g, '\n&lt;') // make it slightly more readable
-                    .replace(/>/g, '&gt;');
+                };
             };
 
             var sampler = 0;
@@ -110,26 +95,10 @@ angular.module('blackboxApp')
                             var series = this.series[0];
 
                             chartContext = this;
-//                            $scope.pollCallback();
-
-
-                            // Register sockets
-//                            setInterval(function () {
-//                                var x = (new Date()).getTime(), // current time
-//                                    y = Math.random();
-//                                series.addPoint([x, y], true, true);
-//                            }, 1000);
-
-//                            $socket.emit('data-loaded');
 
                             $socket.on('vehicle-data', function(data) {
 
                                 sampler++;
-
-//                                if(data.Vehicle_Speed == 0) {return;}
-//                                console.log(data.Timestamp);
-
-//                                video.pause();
                                 videoTime = data.Extra_NormalizedTimeStamp;
 
 //                                console.log(video.currentTime + ', ' + videoTime);
@@ -138,19 +107,12 @@ angular.module('blackboxApp')
                                 } else {
                                     video.pause();
                                 }
-//                                video.currentTime = data.Extra_NormalizedTimeStamp / 1000;
-//                                video.play();
-
-
 
                                 if(sampler % 5 == 0) {
                                     series.addPoint([
-//                                    Math.floor(data.Timestamp / 1000) * 1000,
-                                            startTime + data.Extra_NormalizedTimeStamp,
-//                                    data.Timestamp / 1000,
+                                        startTime + data.Extra_NormalizedTimeStamp,
                                         data.Vehicle_Speed
                                     ], true, true);
-
 
                                     Highcharts.charts[0].xAxis[0].update();
                                     $scope.map.setCenter({
@@ -162,16 +124,14 @@ angular.module('blackboxApp')
                                         lat: data.GPS_Latitude,
                                         lng: data.GPS_Longitude
                                     });
+
                                 }
 
+                                // Check for velocity drop
+                                if(!crashed) {
+                                    checkVelocity(data);
+                                }
 
-//                                    $scope.map.center.lng = data.GPS_Longitude;
-//                                    $scope.map.center.lat = data.GPS_Latitude;
-//
-//                                    $scope.marker.coordinates.lng = data.GPS_Longitude;
-//                                    $scope.marker.coordinates.lat = data.GPS_Latitude;
-
-//                                $scope.safeApply();
 
                             })
                         }
@@ -182,6 +142,17 @@ angular.module('blackboxApp')
                 },
                 xAxis: {
                     type: 'datetime'
+                },
+
+                plotOptions: {
+                    series: {
+                        hover: {
+                            enabled: true
+                        },
+                        marker: {
+                            enabled: false
+                        }
+                    }
                 },
                 yAxis: {
                     min: 0,
@@ -209,6 +180,14 @@ angular.module('blackboxApp')
                 },
                 series: [{
                     name: '',
+                    marker: {
+                        enabled: false,
+                        states: {
+                            hover: {
+                                enabled: false
+                            }
+                        }
+                    },
                     //data: null
                     data: (function () {
                         // generate an array of random data
@@ -218,15 +197,41 @@ angular.module('blackboxApp')
                         startTime = time;
 
                         for (i = 0; i <= 5; i ++) {
+                            var velocity = Math.random() * 20 + 120;
                             data.push({
                                 x: time + i * 1000,
-                                y: Math.random() * 20 + 120
+                                y: velocity
                             });
+                            velocities.push(velocity);
                         }
                         return data;
                     }())
                 }]
             });
+
+            function crashResponse(data) {
+                crashed = true;
+                $scope.exportSVG(data);
+
+            }
+
+            function checkVelocity(data) {
+
+                var newVelocity = data.Vehicle_Speed;
+
+                velocities.push(newVelocity);
+                velocities = velocities.slice(-5);
+
+                var result = 0;
+                angular.forEach(velocities, function(v) {
+                    result += Math.abs(v - newVelocity);
+                });
+
+                if(result > drop) {
+                    drop = result;
+                    crashResponse(data);
+                }
+            }
 
             $scope.responses = [];
 
@@ -238,16 +243,6 @@ angular.module('blackboxApp')
 
                     $socket.emit('data-loaded');
                     video.play();
-
-//                    video.addEventListener("timeupdate", function() {
-//                        console.log(video.currentTime);
-//
-//                        if(video.currenTime < videoTime) {
-//                            video.play();
-//                        } else {
-//                            video.pause();
-//                        }
-//                    }, false);
 
                     // this callback will be called asynchronously
                     // when the response is available
@@ -283,7 +278,7 @@ angular.module('blackboxApp')
                     $scope.map = new H.Map(document.getElementById('map'),
                         defaultLayers.normal.map);
 
-                    $scope.map.setZoom(13);
+                    $scope.map.setZoom(17);
 
                     var behavior = new H.mapevents.Behavior(new H.mapevents.MapEvents($scope.map));
 
