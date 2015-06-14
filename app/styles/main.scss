@@ -18,6 +18,15 @@ $icon-font-path: "/bower_components/bootstrap-sass-official/vendor/assets/fonts/
   margin-top: -20px;
 }
 
+#dash-cam {
+  position: absolute;
+  top: 5px;
+  width: calc(100% - 415px);
+  max-width: 600px;
+  z-index: 5;
+  left: 5px;
+}
+
 .logo-marker {
 
   img {

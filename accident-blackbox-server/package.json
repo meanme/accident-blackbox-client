@@ -4,6 +4,8 @@
   "description": "my first socket.io app",
   "dependencies": {
     "express": "4.10.2",
+    "mongodb": "^2.0.33",
+    "sleep": "^2.0.0",
     "socket.io": "1.2.0"
   }
 }

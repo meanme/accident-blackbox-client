@@ -1,16 +1,24 @@
-<div id="container"></div>
+<div>
 
-<div class="" ng-if="dataLoaded">
-	<!--<map zoom="map.zoom" center="map.center">-->
-		<!--<marker coordinates="marker.coordinates" icon="marker.icon"></marker>-->
-	<!--</map>-->
+	<video src="video/DashCam.mov" id="dash-cam">
+
+	</video>
+
+	<form ng-submit="changeFrame()">
+		<input style='position: absolute; z-index: 10; top: 5px; left: 5px;' type="number" ng-model="frame"/>
+		<!--<button type="submit">Add contact</button>-->
+	</form>
 
 
-	<div class='here-map' id="map"></div>
-	<!--<div id="container">-->
-	<!--</div>-->
-</div>
+	<!--Highcharts-->
+	<div id="container">
+	</div>
 
-<div class="logo-marker">
-	<img src="images/marker.png" alt=""/>
-</div>
+	<div class="" ng-if="dataLoaded">
+
+		<div class='here-map' id="map"></div>
+	</div>
+
+	<div class="logo-marker">
+		<img src="images/marker.png" alt=""/>
+	</div></div>

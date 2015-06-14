@@ -6,12 +6,19 @@ angular.module('blackboxApp')
         '$socket',
         function ($scope, $http, $window, $timeout, polling, $socket) {
 
-//            $socket.on('vehicle-data', function(data) {
-//            });
+            var carMarker = null;
 
-            var bearsMarker = null;
-
+            var video = document.getElementById('dash-cam');
+            var videoTime = 0;
             $scope.map = null;
+            var startTime = null;
+            $scope.changeFrame = function() {
+                startTime = (new Date()).getTime();
+                $socket.emit('change-frame', {
+                    frame: $scope.frame
+                });
+            };
+
             $scope.safeApply = function(fn) {
                 var phase = this.$root.$$phase;
                 if(phase == '$apply' || phase == '$digest') {
@@ -24,44 +31,73 @@ angular.module('blackboxApp')
             };
 
             $scope.speed = [];
+            var chartContext = null;
             $scope.startPolling = false;
             $scope.pollingTimer = null;
 
             $scope.dataLoaded = false;
 
-            /*$scope.map = {
-                zoom : 14,
-                center : {
-                    lng: 0,
-                    lat: 0
-                }
-            };
-            $scope.marker = {
-                coordinates : {
-                    lng: -0.14,
-                    lat: 51.513872
-                },
-                icon: {
-                    template: '<img class="marker-icon" src="images/marker.png">',
-                    events: {
-                        tap: function(data) {
-                            $window.alert('icon params = latitude: ' + data.lat + ', longitude: ' + data.lng);
-                        }
-                    }
-                }
-            };*/
-//
             Highcharts.setOptions({
                 global : {
                     useUTC : false
                 }
             });
 
+            var velocityDelta = [0, 0, 0, 0];
 
-            $('#container').highcharts({
+//            $scope.sequenceId = null;
+//            $scope.pollCallback = function() {
+//
+//                var params = ($scope.sequenceId != null) ? {seq: $scope.sequenceId} : null;
+//
+//                $http({
+//                    url: 'http://localhost:3000/vehicle',
+//                    method: "GET",
+//                    params: params
+//                }).success(function(data) {
+//                    console.log(data.Timestmap);
+//                    var series = chartContext.series[0];
+//
+//                    $scope.sequenceId = data.Extra_SequenceNumber;
+//
+//                    series.addPoint([
+////                            Math.floor(data.Timestamp / 1000) * 1000,
+//
+//
+//                        startTime + data.Extra_NormalizedTimeStamp,
+//                        data.Vehicle_Speed
+//                    ], true, true);
+//
+//
+//                    $scope.map.setCenter({
+//                        lat: data.GPS_Latitude,
+//                        lng: data.GPS_Longitude
+//                    });
+//
+//                    carMarker.setPosition({
+//                        lat: data.GPS_Latitude,
+//                        lng: data.GPS_Longitude
+//                    });
+//
+//                    $scope.pollCallback();
+//
+//                }, function(err) {
+//                    console.error(err);
+//                })
+//            };
+
+
+            $scope.exportSVG = function() {
+                return chart.getSVG()
+                    .replace(/</g, '\n&lt;') // make it slightly more readable
+                    .replace(/>/g, '&gt;');
+            };
+
+            var sampler = 0;
+            var chart = $('#container').highcharts({
                 chart: {
                     type: 'spline',
-                    animation: Highcharts.svg, // don't animate in old IE
+//                    animation: Highcharts.svg, // don't animate in old IE
                     backgroundColor: null,
                     borderWidth: 1,
                     zoomType: 'x',
@@ -70,7 +106,12 @@ angular.module('blackboxApp')
                         load: function () {
 
                             // set up the updating of the chart each second
+
                             var series = this.series[0];
+
+                            chartContext = this;
+//                            $scope.pollCallback();
+
 
                             // Register sockets
 //                            setInterval(function () {
@@ -79,24 +120,50 @@ angular.module('blackboxApp')
 //                                series.addPoint([x, y], true, true);
 //                            }, 1000);
 
+//                            $socket.emit('data-loaded');
+
                             $socket.on('vehicle-data', function(data) {
+
+                                sampler++;
+
 //                                if(data.Vehicle_Speed == 0) {return;}
+//                                console.log(data.Timestamp);
 
-                                series.addPoint([
-                                    Math.floor(data.Timestamp / 1000) * 1000,
-                                    data.Vehicle_Speed
-                                ], true, true);
+//                                video.pause();
+                                videoTime = data.Extra_NormalizedTimeStamp;
+
+//                                console.log(video.currentTime + ', ' + videoTime);
+                                if(video.currentTime < videoTime/1000) {
+                                    video.play();
+                                } else {
+                                    video.pause();
+                                }
+//                                video.currentTime = data.Extra_NormalizedTimeStamp / 1000;
+//                                video.play();
 
 
-                                $scope.map.setCenter({
-                                    lat: data.GPS_Latitude,
-                                    lng: data.GPS_Longitude
-                                });
 
-                                bearsMarker.setPosition({
-                                    lat: data.GPS_Latitude,
-                                    lng: data.GPS_Longitude
-                                });
+                                if(sampler % 5 == 0) {
+                                    series.addPoint([
+//                                    Math.floor(data.Timestamp / 1000) * 1000,
+                                            startTime + data.Extra_NormalizedTimeStamp,
+//                                    data.Timestamp / 1000,
+                                        data.Vehicle_Speed
+                                    ], true, true);
+
+
+                                    Highcharts.charts[0].xAxis[0].update();
+                                    $scope.map.setCenter({
+                                        lat: data.GPS_Latitude,
+                                        lng: data.GPS_Longitude
+                                    });
+
+                                    carMarker.setPosition({
+                                        lat: data.GPS_Latitude,
+                                        lng: data.GPS_Longitude
+                                    });
+                                }
+
 
 //                                    $scope.map.center.lng = data.GPS_Longitude;
 //                                    $scope.map.center.lat = data.GPS_Latitude;
@@ -104,7 +171,7 @@ angular.module('blackboxApp')
 //                                    $scope.marker.coordinates.lng = data.GPS_Longitude;
 //                                    $scope.marker.coordinates.lat = data.GPS_Latitude;
 
-                                $scope.safeApply();
+//                                $scope.safeApply();
 
                             })
                         }
@@ -148,6 +215,7 @@ angular.module('blackboxApp')
                         var data = [],
                             time = (new Date()).getTime(),
                             i;
+                        startTime = time;
 
                         for (i = 0; i <= 5; i ++) {
                             data.push({
@@ -169,17 +237,21 @@ angular.module('blackboxApp')
                     initializeMap();
 
                     $socket.emit('data-loaded');
+                    video.play();
+
+//                    video.addEventListener("timeupdate", function() {
+//                        console.log(video.currentTime);
+//
+//                        if(video.currenTime < videoTime) {
+//                            video.play();
+//                        } else {
+//                            video.pause();
+//                        }
+//                    }, false);
 
                     // this callback will be called asynchronously
                     // when the response is available
                     $scope.responses = data;
-
-//                    console.log($scope.map);
-//                    $scope.map.center.lng = $scope.responses[0].GPS_Longitude;
-//                    $scope.map.center.lat = $scope.responses[0].GPS_Latitude;
-//
-//                    $scope.marker.coordinates.lng = $scope.responses[0].GPS_Longitude;
-//                    $scope.marker.coordinates.lat = $scope.responses[0].GPS_Latitude;
 
                     // Remove street view
                     $timeout(function() {
@@ -279,10 +351,10 @@ angular.module('blackboxApp')
                 });
 
                 // Marker for Chicago Bears home
-                bearsMarker = new H.map.DomMarker({lat: 41.8625, lng: -87.6166}, {
+                carMarker = new H.map.DomMarker({lat: 41.8625, lng: -87.6166}, {
                     icon: domIcon
                 });
-                map.addObject(bearsMarker);
+                map.addObject(carMarker);
 
             }
 
